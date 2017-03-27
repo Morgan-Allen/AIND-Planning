@@ -65,7 +65,8 @@ class AirCargoProblem(Problem):
         :param goal: list of expr
             literal fluents required for goal test
         """
-        self.state_map = initial.pos + initial.neg
+        self.state_map = initials = initial.pos + initial.neg
+        self.indices = dict((initials[i], i) for i in range(len(initials)))
         self.initial_state_TF = 'T' * len(initial.pos) + 'F' * len(initial.neg)
         
         Problem.__init__(self, self.initial_state_TF, goal=goal)
@@ -141,7 +142,7 @@ class AirCargoProblem(Problem):
     
     
     def matching_clauses(self, clauses, value, state):
-        return [m for m in clauses if state[self.state_map.index(m)] == value]
+        return [m for m in clauses if state[self.indices[m]] == value]
     
     
     def actions(self, state: str) -> list:
@@ -169,12 +170,8 @@ class AirCargoProblem(Problem):
         :return: resulting state after action
         """
         new_state = list(state)
-        for clause in action.effect_add:
-            index = self.state_map.index(clause)
-            new_state[index] = 'T'
-        for clause in action.effect_rem:
-            index = self.state_map.index(clause)
-            new_state[index] = 'F'
+        for clause in action.effect_add: new_state[self.indices[clause]] = 'T'
+        for clause in action.effect_rem: new_state[self.indices[clause]] = 'F'
         return "".join(new_state)
     
     
