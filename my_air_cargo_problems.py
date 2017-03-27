@@ -140,14 +140,8 @@ class AirCargoProblem(Problem):
         return load_actions() + unload_actions() + fly_actions()
     
     
-    def is_possible(self, action, state):
-        for clause in action.precond_pos:
-            index = self.state_map.index(clause)
-            if state[index] != 'T': return False
-        for clause in action.precond_neg:
-            index = self.state_map.index(clause)
-            if state[index] != 'F': return False
-        return True
+    def matching_clauses(self, clauses, value, state):
+        return [m for m in clauses if state[self.state_map.index(m)] == value]
     
     
     def actions(self, state: str) -> list:
@@ -160,7 +154,8 @@ class AirCargoProblem(Problem):
         """
         possible_actions = []
         for action in self.actions_list:
-            if not self.is_possible(action, state): continue
+            if self.matching_clauses(action.precond_pos, 'F', state): continue
+            if self.matching_clauses(action.precond_neg, 'T', state): continue
             possible_actions.append(action)
         return possible_actions
     
@@ -189,9 +184,7 @@ class AirCargoProblem(Problem):
         :param state: str representing state
         :return: bool
         """
-        for clause in self.goal:
-            index = self.state_map.index(clause)
-            if state[index] != 'T': return False
+        if self.matching_clauses(self.goal, 'F', state): return False
         return True
     
     
@@ -221,16 +214,24 @@ class AirCargoProblem(Problem):
         conditions by ignoring the preconditions required for an action to be
         executed.
         '''
-        # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
         count = 0
+        unmet_goals = self.matching_clauses(self.goal, 'F', node.state)
+        
+        for action in self.actions_list:
+            for clause in action.effect_add:
+                if clause in unmet_goals:
+                    count += 1
+                    unmet_goals.remove(clause)
+                    if len(unmet_goals) == 0: return count
+        
         return count
 
 
 
 def enumerate_air_cargo_problem(cargos, planes, airports, facts, goals):
-    cargo_at_actions = enumerate_actions(["At(cargo, port)" , FORMULA], {"cargo":cargos, "port": airports})
-    plane_at_actions = enumerate_actions(["At(plane, port)" , FORMULA], {"plane":planes, "port": airports})
-    cargo_in_actions = enumerate_actions(["In(cargo, plane)", FORMULA], {"cargo":cargos, "plane":planes  })
+    cargo_at_actions = enumerate_actions(["At(cargo, port)" , FORMULA], { "cargo" : cargos, "port" : airports })
+    plane_at_actions = enumerate_actions(["At(plane, port)" , FORMULA], { "plane" : planes, "port" : airports })
+    cargo_in_actions = enumerate_actions(["In(cargo, plane)", FORMULA], { "cargo" : cargos, "plane": planes   })
     all_actions      = cargo_at_actions + plane_at_actions + cargo_in_actions
     
     all_fluents = [expr(action.name+str(action.args)) for action in all_actions]
@@ -278,23 +279,6 @@ def air_cargo_p3() -> AirCargoProblem:
         ],
         goals = ['At(C1, JFK)', 'At(C3, JFK)', 'At(C2, SFO)', 'At(C4, SFO)']
     )
-
-
-if __name__=="__main__":
-    problem = air_cargo_p1()
-    problem.print_state(problem.initial_state_TF)
-    
-    print("\nINITIAL ACTIONS POSSIBLE:")
-    possible_actions = problem.actions(problem.initial_state_TF)
-    for action in possible_actions:
-        print("  ", action.name, action.args)
-    
-    #from run_search import run_search
-    #from aimacode.search import astar_search
-    
-    #run_search(problem, astar_search, problem.h1)
-    
-
 
 
 
