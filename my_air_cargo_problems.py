@@ -8,6 +8,49 @@ import itertools
 
 
 
+#  Slightly brittle, but the format should be clear enough to anyone
+#  working from examples:
+
+FORMULA    = 0
+NEED_TRUE  = 1
+NEED_FALSE = 2
+MAKE_TRUE  = 3
+MAKE_FALSE = 4
+
+def enumerate_actions(definition_table: list, vars_table: dict):
+    num_clauses = int(len(definition_table) / 2)
+    num_vars    = len(vars_table)
+    vars_keys   = list(vars_table.keys())
+    actions     = []
+    
+    def sub_values(clause, combo):
+        for i in range(num_vars):
+            clause = clause.replace(vars_keys[i], str(combo[i]))
+        return expr(clause)
+    
+    for combo in itertools.product(*vars_table.values()):
+        if len(combo) != len(set(combo)): continue
+        action_formula = None
+        needs_true  = []
+        needs_false = []
+        makes_true  = []
+        makes_false = []
+        for i in range(num_clauses):
+            exp    = sub_values(definition_table[i * 2], combo)
+            value  = definition_table[(i * 2) + 1]
+            if   (value == FORMULA   ): action_formula = exp
+            elif (value == NEED_TRUE ): needs_true .append(exp)
+            elif (value == NEED_FALSE): needs_false.append(exp)
+            elif (value == MAKE_TRUE ): makes_true .append(exp)
+            elif (value == MAKE_FALSE): makes_false.append(exp)
+        
+        action = Action(action_formula, [needs_true, needs_false], [makes_true, makes_false])
+        actions.append(action)
+    
+    return actions
+
+
+
 class AirCargoProblem(Problem):
     def __init__(self, cargos, planes, airports, initial: FluentState, goal: list):
         """
@@ -61,50 +104,6 @@ class AirCargoProblem(Problem):
         list<Action>
             list of Action objects
         '''
-        
-        #  I'm not sure if this is actually more compact than just using prior
-        #  methods, but I couldn't resist the urge to refactor...
-        
-        #  Slightly brittle, but the format should be clear enough to anyone
-        #  working from examples:
-        
-        FORMULA    = 0
-        NEED_TRUE  = 1
-        NEED_FALSE = 2
-        MAKE_TRUE  = 3
-        MAKE_FALSE = 4
-        
-        def enumerate_actions(definition_table: list, vars_table: dict):
-            num_clauses = int(len(definition_table) / 2)
-            num_vars    = len(vars_table)
-            vars_keys   = list(vars_table.keys())
-            actions     = []
-            
-            def sub_values(clause, combo):
-                for i in range(num_vars):
-                    clause = clause.replace(vars_keys[i], str(combo[i]))
-                return expr(clause)
-            
-            for combo in itertools.product(*vars_table.values()):
-                if len(combo) != len(set(combo)): continue
-                action_formula = None
-                needs_true  = []
-                needs_false = []
-                makes_true  = []
-                makes_false = []
-                for i in range(num_clauses):
-                    exp    = sub_values(definition_table[i * 2], combo)
-                    value  = definition_table[(i * 2) + 1]
-                    if   (value == FORMULA   ): action_formula = exp
-                    elif (value == NEED_TRUE ): needs_true .append(exp)
-                    elif (value == NEED_FALSE): needs_false.append(exp)
-                    elif (value == MAKE_TRUE ): makes_true .append(exp)
-                    elif (value == MAKE_FALSE): makes_false.append(exp)
-                
-                action = Action(action_formula, [needs_true, needs_false], [makes_true, makes_false])
-                actions.append(action)
-            
-            return actions
         
         def load_actions(): return enumerate_actions(
                 [
@@ -228,57 +227,57 @@ class AirCargoProblem(Problem):
 
 
 
+def enumerate_air_cargo_problem(cargos, planes, airports, facts, goals):
+    cargo_at_actions = enumerate_actions(["At(cargo, port)" , FORMULA], {"cargo":cargos, "port": airports})
+    plane_at_actions = enumerate_actions(["At(plane, port)" , FORMULA], {"plane":planes, "port": airports})
+    cargo_in_actions = enumerate_actions(["In(cargo, plane)", FORMULA], {"cargo":cargos, "plane":planes  })
+    all_actions      = cargo_at_actions + plane_at_actions + cargo_in_actions
+    
+    all_fluents = [expr(action.name+str(action.args)) for action in all_actions]
+    facts       = [expr(fact) for fact in facts]
+    goals       = [expr(goal) for goal in goals]
+    negatives   = [fluent for fluent in all_fluents if not fluent in facts]
+    
+    return AirCargoProblem(cargos, planes, airports, FluentState(facts, negatives), goals)
+
+
 def air_cargo_p1() -> AirCargoProblem:
-    cargos = ['C1', 'C2']
-    planes = ['P1', 'P2']
-    airports = ['JFK', 'SFO']
-    pos = [expr('At(C1, SFO)'),
-           expr('At(C2, JFK)'),
-           expr('At(P1, SFO)'),
-           expr('At(P2, JFK)'),
-           ]
-    neg = [expr('At(C2, SFO)'),
-           expr('In(C2, P1)'),
-           expr('In(C2, P2)'),
-           expr('At(C1, JFK)'),
-           expr('In(C1, P1)'),
-           expr('In(C1, P2)'),
-           expr('At(P1, JFK)'),
-           expr('At(P2, SFO)'),
-           ]
-    init = FluentState(pos, neg)
-    goal = [expr('At(C1, JFK)'),
-            expr('At(C2, SFO)'),
-            ]
-    return AirCargoProblem(cargos, planes, airports, init, goal)
+    return enumerate_air_cargo_problem(
+        cargos   = ['C1', 'C2'],
+        planes   = ['P1', 'P2'],
+        airports = ['JFK', 'SFO'],
+        facts = [
+            'At(C1, SFO)', 'At(C2, JFK)',
+            'At(P1, SFO)', 'At(P2, JFK)'
+        ],
+        goals = ['At(C1, JFK)', 'At(C2, SFO)']
+    )
 
 
-"""
-Init(At(C1, SFO) ∧ At(C2, JFK) ∧ At(C3, ATL) 
-	∧ At(P1, SFO) ∧ At(P2, JFK) ∧ At(P3, ATL) 
-	∧ Cargo(C1) ∧ Cargo(C2) ∧ Cargo(C3)
-	∧ Plane(P1) ∧ Plane(P2) ∧ Plane(P3)
-	∧ Airport(JFK) ∧ Airport(SFO) ∧ Airport(ATL))
-Goal(At(C1, JFK) ∧ At(C2, SFO) ∧ At(C3, SFO))
-"""
 def air_cargo_p2() -> AirCargoProblem:
-    # TODO implement Problem 2 definition
-    return AirCargoProblem([], [], [], FluentState([], []), [])
+    return enumerate_air_cargo_problem(
+        cargos   = ['C1', 'C2', 'C3'],
+        planes   = ['P1', 'P2', 'P3'],
+        airports = ['JFK', 'SFO', 'ATL'],
+        facts = [
+            'At(C1, SFO)', 'At(C2, JFK)', 'At(C3, ATL)',
+            'At(P1, SFO)', 'At(P2, JFK)', 'At(P3, ATL)'
+        ],
+        goals = ['At(C1, JFK)', 'At(C2, SFO)', 'At(C3, SFO)']
+    )
 
-"""
-Init(At(C1, SFO) ∧ At(C2, JFK) ∧ At(C3, ATL) ∧ At(C4, ORD) 
-	∧ At(P1, SFO) ∧ At(P2, JFK) 
-	∧ Cargo(C1) ∧ Cargo(C2) ∧ Cargo(C3) ∧ Cargo(C4)
-	∧ Plane(P1) ∧ Plane(P2)
-	∧ Airport(JFK) ∧ Airport(SFO) ∧ Airport(ATL) ∧ Airport(ORD))
-Goal(At(C1, JFK) ∧ At(C3, JFK) ∧ At(C2, SFO) ∧ At(C4, SFO))
-"""
+
 def air_cargo_p3() -> AirCargoProblem:
-    # TODO implement Problem 3 definition
-    return AirCargoProblem([], [], [], FluentState([], []), [])
-
-
-
+    return enumerate_air_cargo_problem(
+        cargos   = ['C1', 'C2', 'C3', 'C4'],
+        planes   = ['P1', 'P2'],
+        airports = ['JFK', 'SFO', 'ATL', 'ORD'],
+        facts = [
+            'At(C1, SFO)', 'At(C2, JFK)', 'At(C3, ATL)', 'At(C4, ORD)',
+            'At(P1, SFO)', 'At(P2, JFK)'
+        ],
+        goals = ['At(C1, JFK)', 'At(C3, JFK)', 'At(C2, SFO)', 'At(C4, SFO)']
+    )
 
 
 if __name__=="__main__":
@@ -289,6 +288,11 @@ if __name__=="__main__":
     possible_actions = problem.actions(problem.initial_state_TF)
     for action in possible_actions:
         print("  ", action.name, action.args)
+    
+    #from run_search import run_search
+    #from aimacode.search import astar_search
+    
+    #run_search(problem, astar_search, problem.h1)
     
 
 
