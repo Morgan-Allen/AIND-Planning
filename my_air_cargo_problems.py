@@ -1,12 +1,8 @@
-from aimacode.logic import PropKB
+#from aimacode.logic import PropKB
 from aimacode.planning import Action
-from aimacode.search import (
-    Node, Problem,
-)
+from aimacode.search import Node, Problem
 from aimacode.utils import expr
-from lp_utils import (
-    FluentState, encode_state, decode_state,
-)
+from lp_utils import FluentState
 from my_planning_graph import PlanningGraph
 import itertools
 
@@ -35,7 +31,23 @@ class AirCargoProblem(Problem):
         self.planes = planes
         self.airports = airports
         self.actions_list = self.get_actions()
+        
+        #print("All actions are: ")
+        #for action in self.actions_list: self.print_action(action)
     
+    def print_action(self, action):
+        print(
+            " ", action.name, action.args,
+            "\n    Needs True:  ", action.precond_pos,
+            "\n    Needs False: ", action.precond_neg,
+            "\n    Makes True:  ", action.effect_add,
+            "\n    Makes False: ", action.effect_rem
+        )
+    
+    def print_state(self, state):
+        print("\nPrinting state: ")
+        for i in range(len(self.state_map)):
+            print("  ", self.state_map[i], ": ", state[i])
     
     def get_actions(self):
         '''
@@ -56,12 +68,16 @@ class AirCargoProblem(Problem):
         #  Slightly brittle, but the format should be clear enough to anyone
         #  working from examples:
         
-        FORMULA = 0, NEED_TRUE = 1, NEED_FALSE = 2, MAKE_TRUE = 3, MAKE_FALSE = 4
+        FORMULA    = 0
+        NEED_TRUE  = 1
+        NEED_FALSE = 2
+        MAKE_TRUE  = 3
+        MAKE_FALSE = 4
         
         def enumerate_actions(definition_table: list, vars_table: dict):
-            num_clauses = len(definition_table) / 2
+            num_clauses = int(len(definition_table) / 2)
             num_vars    = len(vars_table)
-            vars_keys   = vars_table.keys()
+            vars_keys   = list(vars_table.keys())
             actions     = []
             
             def sub_values(clause, combo):
@@ -69,8 +85,13 @@ class AirCargoProblem(Problem):
                     clause = clause.replace(vars_keys[i], str(combo[i]))
                 return expr(clause)
             
-            for combo in itertools.product(**vars_table.values()):
-                action_formula = None, needs_true = [], needs_false = [], makes_true = [], makes_false = []
+            for combo in itertools.product(*vars_table.values()):
+                if len(combo) != len(set(combo)): continue
+                action_formula = None
+                needs_true  = []
+                needs_false = []
+                makes_true  = []
+                makes_false = []
                 for i in range(num_clauses):
                     exp    = sub_values(definition_table[i * 2], combo)
                     value  = definition_table[(i * 2) + 1]
@@ -120,6 +141,16 @@ class AirCargoProblem(Problem):
         return load_actions() + unload_actions() + fly_actions()
     
     
+    def is_possible(self, action, state):
+        for clause in action.precond_pos:
+            index = self.state_map.index(clause)
+            if state[index] != 'T': return False
+        for clause in action.precond_neg:
+            index = self.state_map.index(clause)
+            if state[index] != 'F': return False
+        return True
+    
+    
     def actions(self, state: str) -> list:
         """ Return the actions that can be executed in the given state.
 
@@ -129,13 +160,8 @@ class AirCargoProblem(Problem):
         :return: list of Action objects
         """
         possible_actions = []
-        for action in actions_list:
-            for clause in action.precond_pos:
-                index = self.state_map.index(clause)
-                if state[index] != 'T': continue
-            for clause in action.precond_neg:
-                index = self.state_map.index(clause)
-                if state[index] != 'F': continue
+        for action in self.actions_list:
+            if not self.is_possible(action, state): continue
             possible_actions.append(action)
         return possible_actions
     
@@ -148,14 +174,14 @@ class AirCargoProblem(Problem):
         :param action: Action applied
         :return: resulting state after action
         """
-        new_state = list(self.state_map)
+        new_state = list(state)
         for clause in action.effect_add:
             index = self.state_map.index(clause)
             new_state[index] = 'T'
         for clause in action.effect_rem:
             index = self.state_map.index(clause)
             new_state[index] = 'F'
-        return str(new_state)
+        return "".join(new_state)
     
     
     def goal_test(self, state: str) -> bool:
@@ -227,11 +253,47 @@ def air_cargo_p1() -> AirCargoProblem:
     return AirCargoProblem(cargos, planes, airports, init, goal)
 
 
+"""
+Init(At(C1, SFO) ∧ At(C2, JFK) ∧ At(C3, ATL) 
+	∧ At(P1, SFO) ∧ At(P2, JFK) ∧ At(P3, ATL) 
+	∧ Cargo(C1) ∧ Cargo(C2) ∧ Cargo(C3)
+	∧ Plane(P1) ∧ Plane(P2) ∧ Plane(P3)
+	∧ Airport(JFK) ∧ Airport(SFO) ∧ Airport(ATL))
+Goal(At(C1, JFK) ∧ At(C2, SFO) ∧ At(C3, SFO))
+"""
 def air_cargo_p2() -> AirCargoProblem:
     # TODO implement Problem 2 definition
-    pass
+    return AirCargoProblem([], [], [], FluentState([], []), [])
 
-
+"""
+Init(At(C1, SFO) ∧ At(C2, JFK) ∧ At(C3, ATL) ∧ At(C4, ORD) 
+	∧ At(P1, SFO) ∧ At(P2, JFK) 
+	∧ Cargo(C1) ∧ Cargo(C2) ∧ Cargo(C3) ∧ Cargo(C4)
+	∧ Plane(P1) ∧ Plane(P2)
+	∧ Airport(JFK) ∧ Airport(SFO) ∧ Airport(ATL) ∧ Airport(ORD))
+Goal(At(C1, JFK) ∧ At(C3, JFK) ∧ At(C2, SFO) ∧ At(C4, SFO))
+"""
 def air_cargo_p3() -> AirCargoProblem:
     # TODO implement Problem 3 definition
-    pass
+    return AirCargoProblem([], [], [], FluentState([], []), [])
+
+
+
+
+
+if __name__=="__main__":
+    problem = air_cargo_p1()
+    problem.print_state(problem.initial_state_TF)
+    
+    print("\nINITIAL ACTIONS POSSIBLE:")
+    possible_actions = problem.actions(problem.initial_state_TF)
+    for action in possible_actions:
+        print("  ", action.name, action.args)
+    
+
+
+
+
+
+
+
