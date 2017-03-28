@@ -46,19 +46,19 @@ class PgNode_s(PgNode):
     '''
     A planning graph node representing a state (literal fluent) from a planning
     problem.
-
+    
     Args:
     ----------
     symbol : str
         A string representing a literal expression from a planning problem
         domain.
-
+    
     is_pos : bool
         Boolean flag indicating whether the literal expression is positive or
         negative.
     '''
     
-    def __init__(self, symbol: str, is_pos: bool):
+    def __init__(self, symbol: expr, is_pos: bool):
         ''' S-level Planning Graph node constructor
         
         :param symbol: expr
@@ -101,7 +101,7 @@ class PgNode_s(PgNode):
     
     
     def __repr__(self):
-        return self.symbol if self.is_pos else "~"+self.symbol
+        return str(self.symbol) if self.is_pos else "~"+str(self.symbol)
 
 
 
@@ -156,6 +156,11 @@ class PgNode_a(PgNode):
 
     def __hash__(self):
         return hash(self.action.name) ^ hash(self.action.args)
+    
+    
+    def __repr__(self):
+        return self.action.name+str(self.action.args)
+
 
 
 def mutexify(node1: PgNode, node2: PgNode):
@@ -199,6 +204,16 @@ class PlanningGraph():
         self.s_levels = []
         self.a_levels = []
         self.create_graph()
+    
+    
+    def print_graph(self):
+        print("\nPRINTING PLANNING GRAPH")
+        print("  S Level 0", ":", [n for n in self.s_levels[0]])
+        for level in range(len(self.a_levels)):
+            a_level = self.a_levels[level]
+            s_level = self.s_levels[level + 1]
+            print("  A Level", level    , ":", a_level)
+            print("  S Level", level + 1, ":", s_level)
     
     
     def noop_actions(self, literal_list):
@@ -296,6 +311,7 @@ class PlanningGraph():
                 s_node.children.add(a_node)
             
             a_level.append(a_node)
+        
         self.a_levels.append(a_level)
     
     
@@ -317,8 +333,8 @@ class PlanningGraph():
             for effect in node.action.effect_rem: neg_literals.add(effect)
         
         s_level = []
-        for l in pos_literals: s_level.append(PgNode_s(str(l), True ))
-        for l in neg_literals: s_level.append(PgNode_s(str(l), False))
+        for l in pos_literals: s_level.append(PgNode_s(l, True ))
+        for l in neg_literals: s_level.append(PgNode_s(l, False))
         
         for s_node in s_level:
             parents = None
@@ -350,10 +366,10 @@ class PlanningGraph():
         for i, n1 in enumerate(nodelist[:-1]):
             for n2 in nodelist[i + 1:]:
                 if (self.serialize_actions(n1, n2) or
-                        self.inconsistent_effects_mutex(n1, n2) or
-                        self.interference_mutex(n1, n2) or
-                        self.competing_needs_mutex(n1, n2)):
-                    mutexify(n1, n2)
+                    self.inconsistent_effects_mutex(n1, n2) or
+                    self.interference_mutex(n1, n2) or
+                    self.competing_needs_mutex(n1, n2)
+                ): mutexify(n1, n2)
     
     
     def serialize_actions(self, node_a1: PgNode_a, node_a2: PgNode_a) -> bool:
@@ -414,9 +430,10 @@ class PlanningGraph():
         :param node_a2: PgNode_a
         :return: bool
         '''
-        matches_1 = [e for e in a1.action.precond_pos if e in a2.action.precond_neg]
-        matches_2 = [e for e in a2.action.precond_pos if e in a1.action.precond_neg]
-        return matches_1 or matches_2
+        for p1 in a1.parents:
+            for p2 in a2.parents:
+                if p1.is_mutex(p2): return True
+        return False
     
     
     def update_s_mutex(self, nodeset: set):
@@ -473,7 +490,7 @@ class PlanningGraph():
     
     def h_levelsum(self) -> int:
         '''The sum of the level costs of the individual goals (admissible if goals independent)
-
+        
         :return: int if all sub-goals are (plausibly) satisfiable, or False if
                  one or more are absent from the graph.
         '''

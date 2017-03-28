@@ -52,6 +52,7 @@ def enumerate_actions(definition_table: list, vars_table: dict):
 
 
 class AirCargoProblem(Problem):
+    
     def __init__(self, cargos, planes, airports, initial: FluentState, goal: list):
         """
         :param cargos: list of str
@@ -75,9 +76,7 @@ class AirCargoProblem(Problem):
         self.planes = planes
         self.airports = airports
         self.actions_list = self.get_actions()
-        
-        #print("All actions are: ")
-        #for action in self.actions_list: self.print_action(action)
+    
     
     def print_action(self, action):
         print(
@@ -88,10 +87,12 @@ class AirCargoProblem(Problem):
             "\n    Makes False: ", action.effect_rem
         )
     
+    
     def print_state(self, state):
         print("\nPrinting state: ")
         for i in range(len(self.state_map)):
             print("  ", self.state_map[i], ": ", state[i])
+    
     
     def get_actions(self):
         '''
@@ -147,7 +148,7 @@ class AirCargoProblem(Problem):
     
     def actions(self, state: str) -> list:
         """ Return the actions that can be executed in the given state.
-
+        
         :param state: str
             state represented as T/F string of mapped fluents (state variables)
             e.g. 'FTTTFF'
@@ -177,7 +178,7 @@ class AirCargoProblem(Problem):
     
     def goal_test(self, state: str) -> bool:
         """ Test the state to see if goal is reached
-
+        
         :param state: str representing state
         :return: bool
         """
@@ -186,7 +187,9 @@ class AirCargoProblem(Problem):
     
     
     def h_1(self, node: Node):
-        # note that this is not a true heuristic
+        """
+        Simple constant-value heuristic for baseline comparison.
+        """
         h_const = 1
         return h_const
     
@@ -198,7 +201,6 @@ class AirCargoProblem(Problem):
         out from the current state in order to satisfy each individual goal
         condition.
         '''
-        # requires implemented PlanningGraph class
         pg = PlanningGraph(self, node.state)
         pg_levelsum = pg.h_levelsum()
         return pg_levelsum
