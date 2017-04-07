@@ -4,6 +4,7 @@ from aimacode.search import Node, Problem
 from aimacode.utils import expr
 from lp_utils import FluentState
 from my_planning_graph import PlanningGraph
+from my_planning_graph import ReversePlanningGraph
 import itertools
 
 
@@ -18,6 +19,9 @@ MAKE_TRUE  = 3
 MAKE_FALSE = 4
 
 def enumerate_actions(definition_table: list, vars_table: dict):
+    """
+    
+    """
     num_clauses = int(len(definition_table) / 2)
     num_vars    = len(vars_table)
     vars_keys   = list(vars_table.keys())
@@ -66,16 +70,18 @@ class AirCargoProblem(Problem):
         :param goal: list of expr
             literal fluents required for goal test
         """
-        self.state_map = initials = initial.pos + initial.neg
-        self.indices = dict((initials[i], i) for i in range(len(initials)))
+        self.state_map        = initials = initial.pos + initial.neg
+        self.indices          = dict((initials[i], i) for i in range(len(initials)))
         self.initial_state_TF = 'T' * len(initial.pos) + 'F' * len(initial.neg)
         
         Problem.__init__(self, self.initial_state_TF, goal=goal)
         
-        self.cargos = cargos
-        self.planes = planes
+        self.cargos   = cargos
+        self.planes   = planes
         self.airports = airports
         self.actions_list = self.get_actions()
+        
+        self.reverse_graph = None
     
     
     def print_action(self, action):
@@ -194,16 +200,13 @@ class AirCargoProblem(Problem):
         return h_const
     
     
-    def h_pg_levelsum(self, node: Node):
+    def h_unmet_goals(self, node: Node):
         '''
-        This heuristic uses a planning graph representation of the problem
-        state space to estimate the sum of all actions that must be carried
-        out from the current state in order to satisfy each individual goal
-        condition.
+        This heuristic performs a cruder estimate of 'work remaining' than the
+        ignore-preconditions heuristic, simply by counting the number of unmet
+        goals.
         '''
-        pg = PlanningGraph(self, node.state)
-        pg_levelsum = pg.h_levelsum()
-        return pg_levelsum
+        return len(self.matching_clauses(self.goal, 'F', node.state))
     
     
     def h_ignore_preconditions(self, node: Node):
@@ -224,6 +227,25 @@ class AirCargoProblem(Problem):
                     if len(unmet_goals) == 0: return count
         
         return count
+    
+    
+    def h_pg_reverse_levelsum(self, node: Node):
+        if self.reverse_graph == None:
+            self.reverse_graph = ReversePlanningGraph(self)
+        
+        return self.reverse_graph.h_levelsum(node.state)
+    
+    
+    def h_pg_levelsum(self, node: Node):
+        '''
+        This heuristic uses a planning graph representation of the problem
+        state space to estimate the sum of all actions that must be carried
+        out from the current state in order to satisfy each individual goal
+        condition.
+        '''
+        pg = PlanningGraph(self, node.state)
+        pg_levelsum = pg.h_levelsum()
+        return pg_levelsum
 
 
 

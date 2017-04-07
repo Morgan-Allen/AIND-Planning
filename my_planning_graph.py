@@ -2,6 +2,7 @@ from aimacode.planning import Action
 from aimacode.search import Problem
 from aimacode.utils import expr
 from lp_utils import decode_state
+import math
 
 
 
@@ -182,7 +183,10 @@ def mutexify(node1: PgNode, node2: PgNode):
 class PlanningGraph():
     '''
     A planning graph as described in chapter 10 of the AIMA text. The planning
-    graph can be used to reason about 
+    graph can be used to reason about the actions most likely to meet goal-
+    conditions by working forwards from the current state through layers of
+    actions and literals that loosely correspond to the space of possible
+    outcomes.
     '''
     
     def __init__(self, problem: Problem, state: str, serial_planning=True):
@@ -507,4 +511,57 @@ class PlanningGraph():
         
         return level_sum
 
+
+
+class ReversePlanningGraph():
+    
+    
+    def __init__(self, problem: Problem):
+        self.problem = problem
+        self.create_graph()
+    
+    
+    def create_graph(self):
+        self.need_levels = [{}]
+        init_level = self.need_levels[0]
+        
+        for goal in self.problem.goal:
+            init_level[goal] = 1.
+        
+        while True:
+            needs = self.need_levels[-1]
+            new_needs = {}
+            for action in self.problem.actions_list:
+                sum_meets = 0
+                sum_takes = 0
+                
+                for clause in action.effect_add:
+                    if clause in needs: sum_meets += needs[clause]
+                for clause in action.effect_rem:
+                    if clause in needs: sum_takes += needs[clause]
+                
+                if sum_meets == 0: continue
+                action_rating = sum_meets / (1 + sum_takes)
+                
+                for clause in action.precond_pos:
+                    if not clause in new_needs: new_needs[clause] = 0
+                    new_needs[clause] += action_rating
+            
+            if len(new_needs) == 0 or new_needs.keys == needs.keys: break
+            self.need_levels.append(new_needs)
+    
+    
+    def h_levelsum(self, state: str):
+        level_sum = 0
+        truths = [self.problem.state_map[i] for i in range(len(state)) if state[i] == 'T']
+        for truth in truths:
+            cost = 0
+            for level in self.need_levels:
+                if truth in level:
+                    cost += 1 - level[truth]
+                    break
+                cost += 1
+            level_sum += cost
+        return level_sum
+        
 
