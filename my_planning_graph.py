@@ -6,7 +6,8 @@ from lp_utils import decode_state
 
 
 class PgNode():
-    ''' Base class for planning graph nodes.
+    '''
+    Base class for planning graph nodes.
     
     includes instance sets common to both types of nodes used in a planning graph
     parents: the set of nodes in the previous level
@@ -21,7 +22,8 @@ class PgNode():
     
     
     def is_mutex(self, other) -> bool:
-        ''' Boolean test for mutual exclusion
+        '''
+        Boolean test for mutual exclusion
         
         :param other: PgNode
             the other node to compare with
@@ -32,7 +34,8 @@ class PgNode():
     
     
     def show(self):
-        ''' helper print for debugging shows counts of parents, children, siblings
+        '''
+        Helper print for debugging shows counts of parents, children, siblings
         
         :return:
             print only
@@ -59,7 +62,8 @@ class PgNode_s(PgNode):
     '''
     
     def __init__(self, symbol: expr, is_pos: bool):
-        ''' S-level Planning Graph node constructor
+        '''
+        S-level Planning Graph node constructor
         
         :param symbol: expr
         :param is_pos: bool
@@ -77,7 +81,8 @@ class PgNode_s(PgNode):
     
     
     def show(self):
-        '''helper print for debugging shows literal plus counts of parents, children, siblings
+        '''
+        Helper print for debugging shows literal plus counts of parents, children, siblings
         
         :return:
             print only
@@ -87,7 +92,8 @@ class PgNode_s(PgNode):
     
     
     def __eq__(self, other):
-        '''equality test for nodes - compares only the literal for equality
+        '''
+        Equality test for nodes - compares only the literal for equality
         
         :param other: PgNode_s
         :return: bool
@@ -106,11 +112,13 @@ class PgNode_s(PgNode):
 
 
 class PgNode_a(PgNode):
-    '''A-type (action) Planning Graph node - inherited from PgNode
+    '''
+    A-type (action) Planning Graph node - inherited from PgNode
     '''
 
     def __init__(self, action: Action):
-        '''A-level Planning Graph node constructor
+        '''
+        A-level Planning Graph node constructor
         
         :param action: Action
             a ground action, i.e. this action cannot contain any variables
@@ -135,7 +143,8 @@ class PgNode_a(PgNode):
     
     
     def show(self):
-        '''helper print for debugging shows action plus counts of parents, children, siblings
+        '''
+        Helper print for debugging shows action plus counts of parents, children, siblings
         
         :return:
             print only
@@ -145,7 +154,8 @@ class PgNode_a(PgNode):
     
 
     def __eq__(self, other):
-        '''equality test for nodes - compares only the action name for equality
+        '''
+        Equality test for nodes - compares only the action name for equality
         
         :param other: PgNode_a
         :return: bool
@@ -165,7 +175,7 @@ class PgNode_a(PgNode):
 
 def mutexify(node1: PgNode, node2: PgNode):
     '''
-    adds sibling nodes to each other's mutual exclusion (mutex) set. These should be sibling nodes!
+    Adds sibling nodes to each other's mutual exclusion (mutex) set. These should be sibling nodes!
     
     :param node1: PgNode (or inherited PgNode_a, PgNode_s types)
     :param node2: PgNode (or inherited PgNode_a, PgNode_s types)
@@ -210,6 +220,9 @@ class PlanningGraph():
     
     
     def print_graph(self):
+        '''
+        Prints the current state of the graph.
+        '''
         print("\nPRINTING PLANNING GRAPH")
         print("  S Level 0", ":", [n for n in self.s_levels[0]])
         for level in range(len(self.a_levels)):
@@ -220,7 +233,8 @@ class PlanningGraph():
     
     
     def noop_actions(self, literal_list):
-        '''create persistent action for each possible fluent
+        '''
+        Creates a persistent action for each possible fluent
         
         "No-Op" actions are virtual actions (i.e., actions that only exist in
         the planning graph, not in the planning problem domain) that operate
@@ -250,7 +264,8 @@ class PlanningGraph():
     
     
     def create_graph(self):
-        ''' build a Planning Graph as described in Russell-Norvig 3rd Ed 10.3 or 2nd Ed 11.4
+        '''
+        Builds a Planning Graph as described in Russell-Norvig 3rd Ed 10.3 or 2nd Ed 11.4
         
         The S0 initial level has been implemented for you.  It has no parents and includes all of
         the literal fluents that are part of the initial state passed to the constructor.  At the start
@@ -293,7 +308,8 @@ class PlanningGraph():
     
     
     def add_action_level(self, level):
-        ''' add an A (action) level to the Planning Graph
+        '''
+        Adds an A (action) level to the Planning Graph
         
         :param level: int
             the level number alternates S0, A0, S1, A1, S2, .... etc the level number is also used as the
@@ -319,7 +335,8 @@ class PlanningGraph():
     
     
     def add_literal_level(self, level):
-        ''' add an S (literal) level to the Planning Graph
+        '''
+        Adds an S (literal) level to the Planning Graph
         
         :param level: int
             the level number alternates S0, A0, S1, A1, S2, .... etc the level number is also used as the
@@ -351,7 +368,8 @@ class PlanningGraph():
     
     
     def update_a_mutex(self, nodeset):
-        ''' Determine and update sibling mutual exclusion for A-level nodes
+        '''
+        Determine and update sibling mutual exclusion for A-level nodes
         
         Mutex action tests section from 3rd Ed. 10.3 or 2nd Ed. 11.4
         A mutex relation holds between two actions a given level
@@ -492,7 +510,8 @@ class PlanningGraph():
     
     
     def h_levelsum(self) -> int:
-        '''The sum of the level costs of the individual goals (admissible if goals independent)
+        '''
+        The sum of the level costs of the individual goals (admissible if goals independent)
         
         :return: int if all sub-goals are (plausibly) satisfiable, or False if
                  one or more are absent from the graph.
@@ -513,8 +532,15 @@ class PlanningGraph():
 
 
 class ReversePlanningGraph():
+    '''
+    A loose 'inversion' of the Planning Graph, based on working backwards from
+    a given problem's goals rather than working forward, and dispensing with
+    the assorted mutex checks, parent links and action-levels.  This simplifies
+    implementation and allows the structure to be initialised and cached once
+    per search, rather than having to be re-built for every state explored.
     
-    
+    :param problem: PlanningProblem (or subclass such as AirCargoProblem or HaveCakeProblem)
+    '''
     def __init__(self, problem: Problem):
         self.problem = problem
         self.verbose = False
@@ -522,16 +548,37 @@ class ReversePlanningGraph():
     
     
     def create_graph(self):
-        self.need_levels = [{}]
-        init_level = self.need_levels[0]
+        '''
+        Creates the 'graph' (really just a sequence of literal levels), derived
+        by successively looking for actions which could produce the 'needs'
+        on the prior level, and adding their positive preconditions to the
+        next level of 'needs'.
         
+        As a further refinement, needs on each level are 'weighted' more
+        heavily if they contribute to fulfilling multiple needs on the last
+        level (and penalised if they threaten them.)  This is used to modify
+        the cost estimate produced by h_levelsum (below.)
+        '''
+        self.need_levels = [{}]
+        init_needs = self.need_levels[0]
+        
+        #  We initialise the first level of needs directly from the problem's
+        #  goal-state, with a weighting of 1.
         for goal in self.problem.goal:
-            init_level[goal] = 1.
+            init_needs[goal] = 1.
         
         while True:
+            
+            #  We initialise each new level with the contents of the last (to
+            #  ensure that the succession of needs will eventually 'stabilise'-
+            #  see below.)
             needs = self.need_levels[-1]
             new_needs = needs.copy()
-            max_rating = 0
+            max_needing  = 0
+            
+            #  Each potential action is rated positively for each need it can
+            #  satisfy, and penalised for each need it would threaten, both in
+            #  proportion to the weighting of that need.
             for action in self.problem.actions_list:
                 sum_meets = 0
                 sum_takes = 0
@@ -544,36 +591,60 @@ class ReversePlanningGraph():
                 if sum_meets == 0: continue
                 action_rating = sum_meets / (1 + sum_takes)
                 
+                #  If that action can contribute, all it's positive
+                #  preconditions are added to the set of successor needs.
+                #  NOTE:  negative preconditions were not present for any of
+                #  the actions used for testing, so their handling has been
+                #  ommitted.
                 for clause in action.precond_pos:
                     if not clause in new_needs: new_needs[clause] = 0
                     new_needs[clause] += action_rating
-                    max_rating = max(max_rating, new_needs[clause])
+                    max_needing = max(max_needing, new_needs[clause])
             
+            #  If no new needs have been generated, we don't bother adding the
+            #  new level, and simply return.
             if len(new_needs) == 0 or new_needs.keys() == needs.keys(): break
             
-            for clause in new_needs: new_needs[clause] /= max_rating
+            #  Otherwise, we scale the weighting of each new need to fit
+            #  between 1 and 0:
+            for clause in new_needs: new_needs[clause] /= max_needing
             self.need_levels.append(new_needs)
         
+        #  Optionally, we can print out the sequence of weighted need-levels
+        #  constructed...
         if self.verbose:
             print("\n\nGoals are:", self.problem.goal)
             print("Final need levels are:")
-            level_ID = 0
-            for needs in self.need_levels:
+            
+            for level_ID in range(len(self.need_levels)):
                 print("  Level", level_ID)
-                level_ID += 1
-                for need in needs:
-                    print("   ", need, ":", needs[need])
+                for need in self.need_levels[level_ID]:
+                    print("    {:20.20} : {:8.4}".format(str(need), str(needs[need])))
             print("\n")
     
     
     def h_levelsum(self, state: str):
+        '''
+        Returns the sum of estimated step-costs to reach the problem's goals,
+        given the current set of positive facts within the given state.
+        
+        :param state: a string representing the true/false values of each fact
+                      within th world.
+        :return: an int measuring the guesstimated cost to fulfill the
+                 problem's goals.
+        '''
         level_sum = 0
         truths = [self.problem.state_map[i] for i in range(len(state)) if state[i] == 'T']
         for truth in truths:
             cost = 0
-            for level in self.need_levels:
-                if truth in level:
-                    cost += 1 - level[truth]
+            for needs in self.need_levels:
+                
+                #  If a fact from the state is present on a given generation of
+                #  needs, adjust the cost based on how 'strongly' it's present
+                #  and move on the next fact.  Otherwise, move on to the next
+                #  level.
+                if truth in needs:
+                    cost += 1 - needs[truth]
                     break
                 cost += 1
             level_sum += cost

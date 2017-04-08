@@ -8,10 +8,9 @@ from my_planning_graph import ReversePlanningGraph
 import itertools
 
 
-
-#  Slightly brittle, but the format should be clear enough to anyone
-#  working from examples:
-
+'''
+Keys used to help define actions and their effects or conditions.
+'''
 FORMULA    = 0
 NEED_TRUE  = 1
 NEED_FALSE = 2
@@ -19,9 +18,47 @@ MAKE_TRUE  = 3
 MAKE_FALSE = 4
 
 def enumerate_actions(definition_table: list, vars_table: dict):
-    """
+    '''
+    Enumerates over all possible combinations of action, based on a list of
+    arguments supplied to define the parameters, conditions and effects of
+    the schema, with substitution by a range of values for each variable.
     
-    """
+    Example:
+    enumerate_actions(
+      [
+        "Eat(person, food, venue)", FORMULA,
+        "Has(venue, food)"        , NEED_TRUE,
+        "At(venue, person)"       , NEED_TRUE,
+        "Has(venue, food)"        , NEED_FALSE
+        "Full(person)"            , MAKE_TRUE
+      ]
+      {
+        "person" : ["Heinz", "Luigi", "Bill"],
+        "food"   : ["Bratwurst", "Pasta", "Hot Dogs"],
+        "venue"  : ["Home", "Restaurant"]
+    )
+    ...producing "Eat(Heinz, Pasta, Home)", "Eat(Bill, Bratwurst, Restaurant)",
+    etc., for all 18 possible substitutions.
+    
+    :param definition_table : an alternating list of schema (defined in string
+                              format), and a key to specify it's function in
+                              defining the action.  Must be either:
+                              
+                              FORMULA    -specifies name and parameters
+                              NEED_TRUE  -a positive precondition
+                              NEED_FALSE -a negative precondition
+                              MAKE_TRUE  -an additive/positive effect
+                              MAKE_FALSE -a subtractive/negative effect
+                              
+    :param vars_table       : a dictionary mapping variables (as strings) to
+                              a list of possible values.  All non-repeating
+                              combinations of these values are then
+                              substituted for these variables in the schema
+                              above.
+    
+    :return                 : The resultant list of concrete actions derived
+                              from the specified schema, variables and values.
+    '''
     num_clauses = int(len(definition_table) / 2)
     num_vars    = len(vars_table)
     vars_keys   = list(vars_table.keys())
@@ -32,6 +69,8 @@ def enumerate_actions(definition_table: list, vars_table: dict):
             clause = clause.replace(vars_keys[i], str(combo[i]))
         return expr(clause)
     
+    #  NOTE:  We skip over combinations that feature the same values more than
+    #  once- e.g, flying to and from the same airport...
     for combo in itertools.product(*vars_table.values()):
         if len(combo) != len(set(combo)): continue
         action_formula = None
@@ -58,7 +97,7 @@ def enumerate_actions(definition_table: list, vars_table: dict):
 class AirCargoProblem(Problem):
     
     def __init__(self, cargos, planes, airports, initial: FluentState, goal: list):
-        """
+        '''
         :param cargos: list of str
             cargos in the problem
         :param planes: list of str
@@ -69,7 +108,7 @@ class AirCargoProblem(Problem):
             positive and negative literal fluents (as expr) describing initial state
         :param goal: list of expr
             literal fluents required for goal test
-        """
+        '''
         self.state_map        = initials = initial.pos + initial.neg
         self.indices          = dict((initials[i], i) for i in range(len(initials)))
         self.initial_state_TF = 'T' * len(initial.pos) + 'F' * len(initial.neg)
@@ -85,6 +124,10 @@ class AirCargoProblem(Problem):
     
     
     def print_action(self, action):
+        '''
+        Prints the given action in terms of it's name, arguments, conditions
+        and effects.
+        '''
         print(
             " ", action.name, action.args,
             "\n    Needs True:  ", action.precond_pos,
@@ -95,6 +138,10 @@ class AirCargoProblem(Problem):
     
     
     def print_state(self, state):
+        '''
+        Prints the given state as a mapping of concrete facts to their truth
+        values:
+        '''
         print("\nPrinting state: ")
         for i in range(len(self.state_map)):
             print("  ", self.state_map[i], ": ", state[i])
@@ -230,6 +277,13 @@ class AirCargoProblem(Problem):
     
     
     def h_pg_reverse_levelsum(self, node: Node):
+        '''
+        This heuristic uses a loose 'reversal' of the Planning Graph approach
+        to estimate the sum of actions required to satisfy the problem's goal-
+        state from the given node's state.  Since this approach works backward
+        from the problem's goals, which remain constant, the 'graph' can be
+        cached for re-use throughout the search.
+        '''
         if self.reverse_graph == None:
             self.reverse_graph = ReversePlanningGraph(self)
         
@@ -245,21 +299,41 @@ class AirCargoProblem(Problem):
         '''
         pg = PlanningGraph(self, node.state)
         pg_levelsum = pg.h_levelsum()
+        if pg_levelsum == False: return float("-inf")
         return pg_levelsum
 
 
 
 def enumerate_air_cargo_problem(cargos, planes, airports, facts, goals):
+    '''
+    Constructs all the concrete actions required for a problem from some
+    relatively simple string-based formulae.
+    
+    :param cargos  : a list of all possible cargo IDs (strings)
+    :param planes  : a list of all possible plane IDs (strings)
+    :param airports: a list of all possible airport IDs (strings)
+    :param facts   : a list of all facts which are true in the initial state
+                     (all others are initialised as false by default), also
+                     as strings
+    :param goals   : a list of all facts in the goal-state, also as strings
+    
+    :return        : an AirCargoProblem with a suitable range of 'At' and 'In'
+                     expressions specified for it's initiate state and goals.
+    '''
+    
+    #  We generate 'dummy actions' with no effects and no conditions, simply
+    #  to get the full range of possible facts from their signature schema:
     cargo_at_actions = enumerate_actions(["At(cargo, port)" , FORMULA], { "cargo" : cargos, "port" : airports })
     plane_at_actions = enumerate_actions(["At(plane, port)" , FORMULA], { "plane" : planes, "port" : airports })
     cargo_in_actions = enumerate_actions(["In(cargo, plane)", FORMULA], { "cargo" : cargos, "plane": planes   })
     all_actions      = cargo_at_actions + plane_at_actions + cargo_in_actions
     
+    #  All the string arguments are converted to expressions before being used
+    #  to initialise and return an AirCargoProblem.
     all_fluents = [expr(action.name+str(action.args)) for action in all_actions]
     facts       = [expr(fact) for fact in facts]
     goals       = [expr(goal) for goal in goals]
     negatives   = [fluent for fluent in all_fluents if not fluent in facts]
-    
     return AirCargoProblem(cargos, planes, airports, FluentState(facts, negatives), goals)
 
 
