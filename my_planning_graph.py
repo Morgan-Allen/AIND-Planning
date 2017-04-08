@@ -2,7 +2,6 @@ from aimacode.planning import Action
 from aimacode.search import Problem
 from aimacode.utils import expr
 from lp_utils import decode_state
-import math
 
 
 
@@ -518,6 +517,7 @@ class ReversePlanningGraph():
     
     def __init__(self, problem: Problem):
         self.problem = problem
+        self.verbose = False
         self.create_graph()
     
     
@@ -530,7 +530,8 @@ class ReversePlanningGraph():
         
         while True:
             needs = self.need_levels[-1]
-            new_needs = {}
+            new_needs = needs.copy()
+            max_rating = 0
             for action in self.problem.actions_list:
                 sum_meets = 0
                 sum_takes = 0
@@ -546,9 +547,23 @@ class ReversePlanningGraph():
                 for clause in action.precond_pos:
                     if not clause in new_needs: new_needs[clause] = 0
                     new_needs[clause] += action_rating
+                    max_rating = max(max_rating, new_needs[clause])
             
-            if len(new_needs) == 0 or new_needs.keys == needs.keys: break
+            if len(new_needs) == 0 or new_needs.keys() == needs.keys(): break
+            
+            for clause in new_needs: new_needs[clause] /= max_rating
             self.need_levels.append(new_needs)
+        
+        if self.verbose:
+            print("\n\nGoals are:", self.problem.goal)
+            print("Final need levels are:")
+            level_ID = 0
+            for needs in self.need_levels:
+                print("  Level", level_ID)
+                level_ID += 1
+                for need in needs:
+                    print("   ", need, ":", needs[need])
+            print("\n")
     
     
     def h_levelsum(self, state: str):

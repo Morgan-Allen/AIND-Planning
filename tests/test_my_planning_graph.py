@@ -8,7 +8,7 @@ from aimacode.utils import expr
 from aimacode.planning import Action
 from example_have_cake import have_cake
 from my_planning_graph import (
-    PlanningGraph, PgNode_a, PgNode_s, mutexify
+    PlanningGraph, PgNode_a, PgNode_s, mutexify, ReversePlanningGraph
 )
 
 
@@ -31,6 +31,10 @@ class TestPlanningGraphLevels(unittest.TestCase):
         self.assertEqual(len(self.pg.s_levels[0]), 2, len(self.pg.s_levels[0]))
         self.assertEqual(len(self.pg.s_levels[1]), 4, len(self.pg.s_levels[1]))
         self.assertEqual(len(self.pg.s_levels[2]), 4, len(self.pg.s_levels[2]))
+    
+    def test_reverse_graph(self):
+        reverse_graph = ReversePlanningGraph(self.p)
+        self.assertEqual(len(reverse_graph.need_levels[0]), 2, len(reverse_graph.need_levels[0]))
 
 
 class TestPlanningGraphMutex(unittest.TestCase):
