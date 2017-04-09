@@ -560,6 +560,7 @@ class ReversePlanningGraph():
         the cost estimate produced by h_levelsum (below.)
         '''
         self.need_levels = [{}]
+        self.acts_levels = [{}]
         init_needs = self.need_levels[0]
         
         #  We initialise the first level of needs directly from the problem's
@@ -574,6 +575,7 @@ class ReversePlanningGraph():
             #  see below.)
             needs = self.need_levels[-1]
             new_needs = needs.copy()
+            new_acts = {}
             max_needing  = 0
             
             #  Each potential action is rated positively for each need it can
@@ -596,6 +598,7 @@ class ReversePlanningGraph():
                 #  NOTE:  negative preconditions were not present for any of
                 #  the actions used for testing, so their handling has been
                 #  ommitted.
+                new_acts[action] = action_rating
                 for clause in action.precond_pos:
                     if not clause in new_needs: new_needs[clause] = 0
                     new_needs[clause] += action_rating
@@ -606,21 +609,33 @@ class ReversePlanningGraph():
             if len(new_needs) == 0 or new_needs.keys() == needs.keys(): break
             
             #  Otherwise, we scale the weighting of each new need to fit
-            #  between 1 and 0:
+            #  between 1 and 0, then append the new level to the sequence.
             for clause in new_needs: new_needs[clause] /= max_needing
             self.need_levels.append(new_needs)
+            self.acts_levels.append(new_acts)
         
         #  Optionally, we can print out the sequence of weighted need-levels
-        #  constructed...
-        if self.verbose:
-            print("\n\nGoals are:", self.problem.goal)
-            print("Final need levels are:")
-            
-            for level_ID in range(len(self.need_levels)):
-                print("  Level", level_ID)
-                for need in self.need_levels[level_ID]:
-                    print("    {:20.20} : {:8.4}".format(str(need), str(needs[need])))
-            print("\n")
+        #  constructed.  (Actions are stored solely for debugging/review.)
+        if self.verbose: self.print_levels()
+    
+    
+    def print_levels(self):
+        '''
+        Prints the cached need-levels for this heuristic.
+        '''
+        print("\n\nGoals are:", self.problem.goal)
+        print("Final need levels are:")
+        for level_ID in range(len(self.need_levels)):
+            acts = self.acts_levels[level_ID]
+            if len(acts) > 0: print("  Actions Level", level_ID)
+            for action in acts:
+                act_name = action.name+str(action.args)
+                print("    {:20.20} : {:8.4}".format(act_name, str(acts[action])))
+            print("  Needs Level", level_ID)
+            needs = self.need_levels[level_ID]
+            for need in needs:
+                print("    {:20.20} : {:8.4}".format(str(need), str(needs[need])))
+        print("\n")
     
     
     def h_levelsum(self, state: str):
