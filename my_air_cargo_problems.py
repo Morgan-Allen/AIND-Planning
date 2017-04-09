@@ -4,7 +4,7 @@ from aimacode.search import Node, Problem
 from aimacode.utils import expr
 from lp_utils import FluentState
 from my_planning_graph import PlanningGraph
-from my_planning_graph import ReverseLevelSumLookup
+from my_planning_graph import ReverseNeedsLevelLookup
 import itertools
 import random
 
@@ -286,13 +286,17 @@ class AirCargoProblem(Problem):
         cached for re-use throughout the search.
         '''
         if self.heuristic_lookup == None:
-            self.heuristic_lookup = ReverseLevelSumLookup(self)
+            self.heuristic_lookup = ReverseNeedsLevelLookup(self)
         return self.heuristic_lookup.h_levelsum(node.state)
     
     
     def h_reverse_setlevel(self, node: Node):
+        '''
+        Similar to the above, but using an adapted version of the set-level
+        heuristic described in chapter 11 of AIMA 2E.
+        '''
         if self.heuristic_lookup == None:
-            self.heuristic_lookup = ReverseLevelSumLookup(self)
+            self.heuristic_lookup = ReverseNeedsLevelLookup(self)
         return self.heuristic_lookup.h_setlevel(node.state)
     
     
@@ -310,6 +314,10 @@ class AirCargoProblem(Problem):
     
     
     def h_pg_setlevel(self, node: Node):
+        '''
+        Similar to the above, but using the set-level heuristic described in
+        chapter 11 of AIMA 2E.
+        '''
         pg = PlanningGraph(self, node.state)
         level = pg.h_setlevel()
         if level == False: return float("-inf")
@@ -390,6 +398,10 @@ def air_cargo_p3() -> AirCargoProblem:
 
 
 def air_cargo_random_problem() -> AirCargoProblem:
+    '''
+    Constructs a randomised air-cargo problem, generally for single-run tests,
+    with varying numbers and locations for airports, planes and cargo.
+    '''
     cargos   = ['C1', 'C2', 'C3', 'C4', 'C5']     [0:random.randrange(3, 5)]
     planes   = ['P1', 'P2', 'P3', 'P4']           [0:random.randrange(1, 4)]
     airports = ['JFK', 'SFO', 'ATL', 'ORD', 'MIA'][0:random.randrange(3, 5)]

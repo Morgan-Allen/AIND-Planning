@@ -531,6 +531,13 @@ class PlanningGraph():
     
     
     def h_setlevel(self) -> int:
+        '''
+        The cost to reach the first level in which all sub-goals are present
+        and non-exclusive.
+        
+        :return: int if all sub-goals are (plausibly) satisfiable, or False if
+                 one or more are absent from the graph.
+        '''
         level = 0
         for s_level in self.s_levels:
             
@@ -538,9 +545,9 @@ class PlanningGraph():
             if len(matches) != len(self.problem.goal): continue
             
             match_okay = True
-            mutex = ()
+            mutex = set()
             for node in matches:
-                mutex = mutex + node.mutex
+                mutex.update(node.mutex)
                 if node in mutex:
                     match_okay = False
                     break
@@ -553,9 +560,9 @@ class PlanningGraph():
 
 
 
-class ReverseLevelSumLookup():
+class ReverseNeedsLevelLookup():
     '''
-    A loose 'inversion' of the Planning Graph, based on working backwards from
+    A loose 'reversal' of the Planning Graph, based on working backwards from
     a given problem's goals rather than working forward, and dispensing with
     the assorted mutex checks, parent links and action-levels.  This simplifies
     implementation and allows the structure to be initialised and cached once
@@ -566,12 +573,12 @@ class ReverseLevelSumLookup():
     def __init__(self, problem: Problem):
         self.problem = problem
         self.verbose = False
-        self.create_graph()
+        self.create_lookup()
     
     
-    def create_graph(self):
+    def create_lookup(self):
         '''
-        Creates the 'graph' (really just a sequence of literal levels), derived
+        Creates the lookup tables (loosely similar to literal levels), derived
         by successively looking for actions which could produce the 'needs'
         on the prior level, and adding their positive preconditions to the
         next level of 'needs'.
@@ -689,11 +696,23 @@ class ReverseLevelSumLookup():
     
     
     def h_setlevel(self, state: str):
+        '''
+        Returns the first level of needs, working back from the goal, in which
+        all the state's current facts are represented.
+        
+        :param state: a string representing the true/false values of each fact
+                      within th world.
+        :return: an int measuring the guesstimated cost to fulfill the
+                 problem's goals.
+        '''
         level = 0
         truths = [self.problem.state_map[i] for i in range(len(state)) if state[i] == 'T']
         for needs in self.need_levels:
             all_weights = [needs[t] for t in truths if t in needs]
             if len(all_weights) == len(truths):
+                
+                #  Similar to before, we fudge the cost a little based on the
+                #  weights of the sampled needs:
                 level += 1 - (sum(all_weights) / len(all_weights))
                 break
             level += 1
