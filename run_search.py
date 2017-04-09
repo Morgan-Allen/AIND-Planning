@@ -5,7 +5,9 @@ from aimacode.search import (breadth_first_search, astar_search,
     breadth_first_tree_search, depth_first_graph_search, uniform_cost_search,
     greedy_best_first_graph_search, depth_limited_search,
     recursive_best_first_search)
-from my_air_cargo_problems import air_cargo_p1, air_cargo_p2, air_cargo_p3
+from my_air_cargo_problems import (
+    air_cargo_p1, air_cargo_p2, air_cargo_p3, air_cargo_random_problem
+)
 
 PROBLEM_CHOICE_MSG = """
 Select from the following list of air cargo problems. You may choose more than
@@ -25,7 +27,9 @@ choices for each include:
 
 PROBLEMS = [["Air Cargo Problem 1", air_cargo_p1],
             ["Air Cargo Problem 2", air_cargo_p2],
-            ["Air Cargo Problem 3", air_cargo_p3]]
+            ["Air Cargo Problem 3", air_cargo_p3],
+            ["Air Cargo Random Problem", air_cargo_random_problem],
+            ]
 SEARCHES = [["breadth_first_search", breadth_first_search, ""],
             ['breadth_first_tree_search', breadth_first_tree_search, ""],
             ['depth_first_graph_search', depth_first_graph_search, ""],
@@ -36,8 +40,10 @@ SEARCHES = [["breadth_first_search", breadth_first_search, ""],
             ['astar_search', astar_search, 'h_1'],
             ['astar_search', astar_search, 'h_unmet_goals'],
             ['astar_search', astar_search, 'h_ignore_preconditions'],
-            ['astar_search', astar_search, 'h_pg_reverse_levelsum'],
+            ['astar_search', astar_search, 'h_reverse_levelsum'],
+            ['astar_search', astar_search, 'h_reverse_setlevel'],
             ['astar_search', astar_search, 'h_pg_levelsum'],
+            ['astar_search', astar_search, 'h_pg_setlevel'],
             ]
 
 
@@ -46,13 +52,13 @@ class PrintableProblem(InstrumentedProblem):
     class modifies the print output of those statistics for air cargo
     problems.
     """
-
+    
     def __repr__(self):
         return '{:^10d}  {:^10d}  {:^10d}'.format(self.succs, self.goal_tests, self.states)
 
 
 def run_search(problem, search_function, parameter=None):
-
+    
     start = timer()
     ip = PrintableProblem(problem)
     if parameter is not None:
@@ -67,19 +73,19 @@ def run_search(problem, search_function, parameter=None):
 
 
 def manual():
-
+    
     print(PROBLEM_CHOICE_MSG)
     for idx, (name, _) in enumerate(PROBLEMS):
         print("    {!s}. {}".format(idx+1, name))
     p_choices = input("> ").split()
-
+    
     print(SEARCH_METHOD_CHOICE_MSG)
     for idx, (name, _, heuristic) in enumerate(SEARCHES):
         print("    {!s}. {} {}".format(idx+1, name, heuristic))
     s_choices = input("> ").split()
-
+    
     main(p_choices, s_choices)
-
+    
     print("\nYou can run this selection again automatically from the command " +
           "line\nwith the following command:")
     print("\n  python {} -p {} -s {}\n".format(__file__,
@@ -88,16 +94,16 @@ def manual():
 
 
 def main(p_choices, s_choices):
-
+    
     problems = [PROBLEMS[i-1] for i in map(int, p_choices)]
     searches = [SEARCHES[i-1] for i in map(int, s_choices)]
-
+    
     for pname, p in problems:
-
+        
         for sname, s, h in searches:
             hstring = h if not h else " with {}".format(h)
             print("\nSolving {} using {}{}...".format(pname, sname, hstring))
-
+            
             _p = p()
             _h = None if not h else getattr(_p, h)
             run_search(_p, s, _h)
@@ -119,7 +125,7 @@ if __name__=="__main__":
     parser.add_argument('-s', '--searches', nargs="+", choices=range(1, len(SEARCHES)+1), type=int, metavar='',
                         help="Specify the indices of the search algorithms to use as a list of space separated values. Choose from: {!s}".format(list(range(1, len(SEARCHES)+1))))
     args = parser.parse_args()
-
+    
     if args.manual:
         manual()
     elif args.problems and args.searches:

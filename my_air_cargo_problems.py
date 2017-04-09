@@ -4,8 +4,9 @@ from aimacode.search import Node, Problem
 from aimacode.utils import expr
 from lp_utils import FluentState
 from my_planning_graph import PlanningGraph
-from my_planning_graph import ReversePlanningGraph
+from my_planning_graph import ReverseLevelSumLookup
 import itertools
+import random
 
 
 '''
@@ -120,7 +121,7 @@ class AirCargoProblem(Problem):
         self.airports = airports
         self.actions_list = self.get_actions()
         
-        self.reverse_graph = None
+        self.heuristic_lookup = None
     
     
     def print_action(self, action):
@@ -276,7 +277,7 @@ class AirCargoProblem(Problem):
         return count
     
     
-    def h_pg_reverse_levelsum(self, node: Node):
+    def h_reverse_levelsum(self, node: Node):
         '''
         This heuristic uses a loose 'reversal' of the Planning Graph approach
         to estimate the sum of actions required to satisfy the problem's goal-
@@ -284,10 +285,15 @@ class AirCargoProblem(Problem):
         from the problem's goals, which remain constant, the 'graph' can be
         cached for re-use throughout the search.
         '''
-        if self.reverse_graph == None:
-            self.reverse_graph = ReversePlanningGraph(self)
-        
-        return self.reverse_graph.h_levelsum(node.state)
+        if self.heuristic_lookup == None:
+            self.heuristic_lookup = ReverseLevelSumLookup(self)
+        return self.heuristic_lookup.h_levelsum(node.state)
+    
+    
+    def h_reverse_setlevel(self, node: Node):
+        if self.heuristic_lookup == None:
+            self.heuristic_lookup = ReverseLevelSumLookup(self)
+        return self.heuristic_lookup.h_setlevel(node.state)
     
     
     def h_pg_levelsum(self, node: Node):
@@ -298,9 +304,16 @@ class AirCargoProblem(Problem):
         condition.
         '''
         pg = PlanningGraph(self, node.state)
-        pg_levelsum = pg.h_levelsum()
-        if pg_levelsum == False: return float("-inf")
-        return pg_levelsum
+        level = pg.h_levelsum()
+        if level == False: return float("-inf")
+        return level
+    
+    
+    def h_pg_setlevel(self, node: Node):
+        pg = PlanningGraph(self, node.state)
+        level = pg.h_setlevel()
+        if level == False: return float("-inf")
+        return level
 
 
 
@@ -376,7 +389,24 @@ def air_cargo_p3() -> AirCargoProblem:
     )
 
 
-
-
-
+def air_cargo_random_problem() -> AirCargoProblem:
+    cargos   = ['C1', 'C2', 'C3', 'C4', 'C5']     [0:random.randrange(3, 5)]
+    planes   = ['P1', 'P2', 'P3', 'P4']           [0:random.randrange(1, 4)]
+    airports = ['JFK', 'SFO', 'ATL', 'ORD', 'MIA'][0:random.randrange(3, 5)]
+    
+    facts = []
+    goals = []
+    for plane in planes:
+        at = random.choice(airports)
+        facts.append('At({}, {})'.format(plane, at))
+    for cargo in cargos:
+        at = random.choice(airports)
+        facts.append('At({}, {})'.format(cargo, at))
+        goes = random.choice([a for a in airports if a != at])
+        goals.append('At({}, {})'.format(cargo, goes))
+    
+    print("\nGenerated Random Problem:")
+    print("  Facts:", facts)
+    print("  Goals:", goals)
+    return enumerate_air_cargo_problem(cargos, planes, airports, facts, goals)
 

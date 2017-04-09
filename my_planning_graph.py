@@ -528,10 +528,32 @@ class PlanningGraph():
             level_sum += level
         
         return level_sum
+    
+    
+    def h_setlevel(self) -> int:
+        level = 0
+        for s_level in self.s_levels:
+            
+            matches = [n for n in s_level if n.symbol in self.problem.goal and n.is_pos]
+            if len(matches) != len(self.problem.goal): continue
+            
+            match_okay = True
+            mutex = ()
+            for node in matches:
+                mutex = mutex + node.mutex
+                if node in mutex:
+                    match_okay = False
+                    break
+            
+            if match_okay:
+                return level
+            
+            level += 1
+        return False
 
 
 
-class ReversePlanningGraph():
+class ReverseLevelSumLookup():
     '''
     A loose 'inversion' of the Planning Graph, based on working backwards from
     a given problem's goals rather than working forward, and dispensing with
@@ -664,5 +686,17 @@ class ReversePlanningGraph():
                 cost += 1
             level_sum += cost
         return level_sum
-        
+    
+    
+    def h_setlevel(self, state: str):
+        level = 0
+        truths = [self.problem.state_map[i] for i in range(len(state)) if state[i] == 'T']
+        for needs in self.need_levels:
+            all_weights = [needs[t] for t in truths if t in needs]
+            if len(all_weights) == len(truths):
+                level += 1 - (sum(all_weights) / len(all_weights))
+                break
+            level += 1
+        return level
+            
 
