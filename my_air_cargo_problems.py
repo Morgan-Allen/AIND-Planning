@@ -30,7 +30,7 @@ def enumerate_actions(definition_table: list, vars_table: dict):
         "Eat(person, food, venue)", FORMULA,
         "Has(venue, food)"        , NEED_TRUE,
         "At(venue, person)"       , NEED_TRUE,
-        "Has(venue, food)"        , NEED_FALSE
+        "Has(venue, food)"        , MAKE_FALSE
         "Full(person)"            , MAKE_TRUE
       ]
       {
@@ -339,7 +339,7 @@ def enumerate_air_cargo_problem(cargos, planes, airports, facts, goals):
     :param goals   : a list of all facts in the goal-state, also as strings
     
     :return        : an AirCargoProblem with a suitable range of 'At' and 'In'
-                     expressions specified for it's initiate state and goals.
+                     expressions specified for it's initial state and goals.
     '''
     
     #  We generate 'dummy actions' with no effects and no conditions, simply

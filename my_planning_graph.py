@@ -219,17 +219,41 @@ class PlanningGraph():
         self.create_graph()
     
     
+    def print_s_levels(self):
+        '''
+        Prints all s_levels for the graph.
+        '''
+        print("\nPRINTING PLANNING GRAPH S_LEVELS:")
+        level_ID = 0
+        for level in self.s_levels:
+            print("  S Level", level_ID, ":")
+            level_ID += 1
+            for node in level:
+                if not node.is_pos: continue
+                print("    {}".format(str(node)))
+    
+    
     def print_graph(self):
         '''
         Prints the current state of the graph.
         '''
         print("\nPRINTING PLANNING GRAPH")
-        print("  S Level 0", ":", [n for n in self.s_levels[0]])
+        print("  S Level 0 :")
+        for node in self.s_levels[0]:
+            if not node.is_pos: continue
+            print("    {}".format(str(node)))
+        
         for level in range(len(self.a_levels)):
             a_level = self.a_levels[level]
             s_level = self.s_levels[level + 1]
-            print("  A Level", level    , ":", a_level)
-            print("  S Level", level + 1, ":", s_level)
+            print("  A Level", level    , ":")
+            for node in a_level:
+                if node.is_persistent: continue
+                print("    {}".format(str(node)))
+            print("  S Level", level + 1, ":")
+            for node in s_level:
+                if not node.is_pos: continue
+                print("    {}".format(str(node)))
     
     
     def noop_actions(self, literal_list):
@@ -284,7 +308,7 @@ class PlanningGraph():
         
         # initialize S0 to literals in initial state provided.
         leveled = False
-        level = 0
+        level   = 0
         self.s_levels.append(set())  # S0 set of s_nodes - empty to start
         # for each fluent in the initial state, add the correct literal PgNode_s
         for literal in self.fs.pos:
@@ -322,7 +346,8 @@ class PlanningGraph():
         for action in self.all_actions:
             pos_parents = [node for node in s_level if node.symbol in action.precond_pos and     node.is_pos]
             neg_parents = [node for node in s_level if node.symbol in action.precond_neg and not node.is_pos]
-            if not (pos_parents or neg_parents): continue
+            if len(pos_parents) != len(action.precond_pos): continue
+            if len(neg_parents) != len(action.precond_neg): continue
             
             a_node = PgNode_a(action)
             for s_node in (neg_parents + pos_parents):

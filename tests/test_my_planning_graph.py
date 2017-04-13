@@ -8,7 +8,7 @@ from aimacode.utils import expr
 from aimacode.planning import Action
 from example_have_cake import have_cake
 from my_planning_graph import (
-    PlanningGraph, PgNode_a, PgNode_s, mutexify, ReversePlanningGraph
+    PlanningGraph, PgNode_a, PgNode_s, mutexify, ReverseNeedsLevelLookup
 )
 
 
@@ -16,14 +16,14 @@ class TestPlanningGraphLevels(unittest.TestCase):
     def setUp(self):
         self.p = have_cake()
         self.pg = PlanningGraph(self.p, self.p.initial)
-
+    
     def test_add_action_level(self):
         # for level, nodeset in enumerate(self.pg.a_levels):
         #     for node in nodeset:
         #         print("Level {}: {}{})".format(level, node.action.name, node.action.args))
         self.assertEqual(len(self.pg.a_levels[0]), 3, len(self.pg.a_levels[0]))
         self.assertEqual(len(self.pg.a_levels[1]), 6, len(self.pg.a_levels[1]))
-
+    
     def test_add_literal_level(self):
         # for level, nodeset in enumerate(self.pg.s_levels):
         #     for node in nodeset:
@@ -33,8 +33,8 @@ class TestPlanningGraphLevels(unittest.TestCase):
         self.assertEqual(len(self.pg.s_levels[2]), 4, len(self.pg.s_levels[2]))
     
     def test_reverse_graph(self):
-        reverse_graph = ReversePlanningGraph(self.p)
-        self.assertEqual(len(reverse_graph.need_levels[0]), 2, len(reverse_graph.need_levels[0]))
+        reverse_lookup = ReverseNeedsLevelLookup(self.p)
+        self.assertEqual(len(reverse_lookup.need_levels[0]), 2, len(reverse_lookup.need_levels[0]))
 
 
 class TestPlanningGraphMutex(unittest.TestCase):
@@ -123,6 +123,7 @@ class TestPlanningGraphHeuristics(unittest.TestCase):
     def setUp(self):
         self.p = have_cake()
         self.pg = PlanningGraph(self.p, self.p.initial)
+        self.pg.print_graph()
 
     def test_levelsum(self):
         self.assertEqual(self.pg.h_levelsum(), 1)
