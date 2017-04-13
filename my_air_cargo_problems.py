@@ -1,4 +1,4 @@
-#from aimacode.logic import PropKB
+
 from aimacode.planning import Action
 from aimacode.search import Node, Problem
 from aimacode.utils import expr
@@ -268,11 +268,11 @@ class AirCargoProblem(Problem):
         unmet_goals = self.matching_clauses(self.goal, 'F', node.state)
         
         for action in self.actions_list:
-            for clause in action.effect_add:
-                if clause in unmet_goals:
-                    count += 1
-                    unmet_goals.remove(clause)
-                    if len(unmet_goals) == 0: return count
+            if len(unmet_goals) == 0: break
+            new_goals = [g for g in unmet_goals if not g in action.effect_add]
+            if len(new_goals) != len(unmet_goals):
+                count += 1
+                unmet_goals = new_goals
         
         return count
     
